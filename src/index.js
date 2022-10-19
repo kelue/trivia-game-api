@@ -3,7 +3,8 @@ const http = require('http');
 const path = require('path');
 const socketio = require('socket.io');
 
-const port = process.env.PORT || 8080;
+const port = process.env.PORT || 3000;
+console.log("PORT", process.env.PORT)
 
 const app = express();
 const server = http.createServer(app); // create the HTTP server using the Express app created on the previous line
@@ -16,8 +17,7 @@ io.on('connection', () => { // listen for new connections to Socket.IO
 console.log('A new player just connected');
 })
 
-app.listen(port, () => {
-  server.listen(port, () => {
+
+server.listen(port, () => {
   console.log(`Server is up on port ${port}.`);
-  })
 })
