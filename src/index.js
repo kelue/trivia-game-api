@@ -3,7 +3,16 @@ const http = require('http');
 const path = require('path');
 const socketio = require('socket.io');
 
-const port = process.env.PORT || 3000;
+//local modules
+const formatMessage = require("./utils/formatMessage.js");
+const {
+  addPlayer,
+  getAllPlayers,
+  getPlayer,
+  removePlayer,
+} = require("./utils/players.js");
+
+const port = process.env.PORT || 8080;
 console.log("PORT", process.env.PORT)
 
 const app = express();
@@ -13,8 +22,20 @@ const io = socketio(server); // connect Socket.IO to the HTTP server
 const publicDirectoryPath = path.join(__dirname, '../public');
 app.use(express.static(publicDirectoryPath));
 
-io.on('connection', () => { // listen for new connections to Socket.IO
-console.log('A new player just connected');
+//watches for connection events from the client
+io.on('connection', socket => {
+  console.log('A new player just connected');
+
+  socket.on('join', ({ playerName, room }, callback) => {
+    const { error, newPlayer } = addPlayer({ id: socket.id, playerName, room });
+
+    if (error) return callback(error.message);
+    callback(); // The callback can be called without data.
+
+    socket.join(newPlayer.room);
+
+    socket.emit('message', formatMessage('Admin', 'Welcome!'));
+  });
 })
 
 
