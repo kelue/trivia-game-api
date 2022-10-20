@@ -25,6 +25,7 @@ app.use(express.static(publicDirectoryPath));
 io.on('connection', socket => {
   console.log('A new player just connected');
 
+  //when a connection is established, connect the plyer to a room
   socket.on('join', ({ playerName, room }, callback) => {
     const { error, newPlayer } = addPlayer({ id: socket.id, playerName, room });
 
@@ -34,8 +35,44 @@ io.on('connection', socket => {
     socket.join(newPlayer.room);
 
     socket.emit('message', formatMessage('Admin', 'Welcome!'));
+
+    socket.broadcast
+      .to(newPlayer.room)
+      .emit(
+        'message',
+        formatMessage('Admin', `${newPlayer.playerName} has joined the game!`)
+      );
+
+    // Emit a "room" event to all players to update their Game Info sections
+    io.in(newPlayer.room).emit('room', {
+      room: newPlayer.room,
+      players: getAllPlayers(newPlayer.room),
+    });
+
+  });
+
+  socket.on("disconnect", () => {
+    console.log("A player disconnected.");
+  
+    const disconnectedPlayer = removePlayer(socket.id);
+  
+    if (disconnectedPlayer) {
+      const { playerName, room } = disconnectedPlayer;
+      io.in(room).emit(
+        "message",
+        formatMessage("Admin", `${playerName} has left!`)
+      );
+  
+      io.in(room).emit("room", {
+        room,
+        players: getAllPlayers(room),
+      });
+    }
   });
 })
+
+
+
 
 
 server.listen(port, () => {

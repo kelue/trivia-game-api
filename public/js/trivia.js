@@ -41,4 +41,27 @@ socket.on("message", ({ playerName, text, createdAt }) => {
     });
   
     chatMessages.insertAdjacentHTML("afterBegin", html);
+});
+
+
+//listen for room event from server which informs all clients of room events
+socket.on("room", ({ room, players }) => {
+  // target the container where we'll attach the info to
+  const gameInfo = document.querySelector(".game-info");
+
+  // target the Handlebars template we'll use to format the game info
+  const sidebarTemplate = document.querySelector(
+    "#game-info-template"
+  ).innerHTML;
+
+  // Compile the template into HTML by calling Handlebars.compile(), which returns a function
+  const template = Handlebars.compile(sidebarTemplate);
+
+  const html = template({
+    room,
+    players,
   });
+
+  // set gameInfo container's html content to the new html
+  gameInfo.innerHTML = html;
+});
