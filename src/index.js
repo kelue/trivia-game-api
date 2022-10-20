@@ -12,6 +12,8 @@ const {
   removePlayer,
 } = require("./utils/players.js");
 
+const { setGame } = require("./utils/game.js")
+
 const port = process.env.PORT || 8080;
 
 const app = express();
@@ -85,25 +87,26 @@ io.on('connection', socket => {
       callback(); // invoke the callback to trigger event acknowledgment
     }
   });
-})
 
-//listen for get question event from the client
-socket.on("getQuestion", (data, callback) => {
-  const { error, player } = getPlayer(socket.id);
 
-  if (error) return callback(error.message);
+  //listen for get question event from the client
+  socket.on("getQuestion", async (data, callback) => {
+    const { error, player } = getPlayer(socket.id);
 
-  if (player) {
-    // Pass in a callback function to handle the promise that's returned from the API call
-    setGame((game) => {
-      // Emit the "question" event to all players in the room
-      io.to(player.room).emit("question", {
+    if (error) return callback(error.message);
+
+    if (player) {
+      // Pass in a callback function to handle the promise that's returned from the API call
+      const game = await setGame();
+      //Emit the question event to all players in the room
+      io.to(player.room).emit('question', {
         playerName: player.playerName,
         ...game.prompt,
-      });
-    });
-  }
-});
+        });
+      }
+  });
+
+})// end of io.on("connection") block
 
 
 server.listen(port, () => {

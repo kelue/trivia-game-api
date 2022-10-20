@@ -1,6 +1,9 @@
 const https = require("https");
+const fetch = require("node-fetch")
+
 const { getAllPlayers } = require("./players.js");
 
+//object stores the game state for each player
 const game = {
   prompt: {
     answers: "",
@@ -14,6 +17,7 @@ const game = {
   },
 };
 
+//update the game status and the round info
 const getGameStatus = ({ event }) => {
   const { correctAnswer, isRoundOver } = game.status;
 
@@ -22,6 +26,7 @@ const getGameStatus = ({ event }) => {
   }
 };
 
+//if all players have submitted an answer, end round
 const setGameStatus = ({ event, playerId, answer, room }) => {
   if (event === "sendAnswer") {
     const { submissions } = game.status;
@@ -37,35 +42,32 @@ const setGameStatus = ({ event, playerId, answer, room }) => {
   return game.status;
 };
 
-const setGame = (callback) => {
-  const url = "https://opentdb.com/api.php?amount=1&category=18";
-  let data = "";
+//sets the game state to default to start a new game
+const setGame = async callback => {
+    try {
+      const response = await fetch(
+        'https://opentdb.com/api.php?amount=1&category=18'
+      );
+      const data = await response.json();
+      const {
+        correct_answer,
+        createdAt,
+        incorrect_answers,
+        question,
+      } = data.results[0];
 
-  const request = https.request(url, (response) => {
-    response.on("data", (chunk) => {
-      data = data + chunk.toString();
-    });
-
-    response.on("end", () => {
-      const { correct_answer, createdAt, incorrect_answers, question } =
-        JSON.parse(data).results[0];
-
-      game.status.submissions = {};
-      game.status.correctAnswer = correct_answer;
-      game.prompt = {
+        game.status.submissions = {};
+        game.status.correctAnswer = correct_answer;
+        game.prompt = {
         answers: shuffle([correct_answer, ...incorrect_answers]),
         question,
-      };
+        };
+        return game;
 
-      callback(game);
-    });
-  });
-
-  request.on("error", (error) => {
-    console.error("An error", error);
-  });
-  request.end();
-};
+        } catch (error) {
+        console.log(error);
+    }
+}
 
 // Shuffles an array. Source: https://javascript.info/task/shuffle
 const shuffle = (array) => {
@@ -74,7 +76,7 @@ const shuffle = (array) => {
     [array[end], array[random]] = [array[random], array[end]];
   }
   return array;
-};
+}
 
 module.exports = {
   getGameStatus,
