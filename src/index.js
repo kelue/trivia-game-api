@@ -13,7 +13,6 @@ const {
 } = require("./utils/players.js");
 
 const port = process.env.PORT || 8080;
-console.log("PORT", process.env.PORT)
 
 const app = express();
 const server = http.createServer(app); // create the HTTP server using the Express app created on the previous line
