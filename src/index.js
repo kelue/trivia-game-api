@@ -51,6 +51,7 @@ io.on('connection', socket => {
 
   });
 
+  //listen for player disconnection and send events to the room
   socket.on("disconnect", () => {
     console.log("A player disconnected.");
   
@@ -67,6 +68,21 @@ io.on('connection', socket => {
         room,
         players: getAllPlayers(room),
       });
+    }
+  });
+
+  //listen for message event by player and update the room chat
+  socket.on("sendMessage", (message, callback) => {
+    const { error, player } = getPlayer(socket.id);
+  
+    if (error) return callback(error.message);
+  
+    if (player) {
+      io.to(player.room).emit(
+        "message",
+        formatMessage(player.playerName, message)
+      );
+      callback(); // invoke the callback to trigger event acknowledgment
     }
   });
 })
