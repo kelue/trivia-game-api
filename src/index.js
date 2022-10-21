@@ -12,7 +12,7 @@ const {
   removePlayer,
 } = require("./utils/players.js");
 
-const { setGame } = require("./utils/game.js")
+const { setGame, setGameStatus, getGameStatus } = require("./utils/game.js")
 
 const port = process.env.PORT || 8080;
 
@@ -53,57 +53,100 @@ io.on('connection', socket => {
 
   });
 
-  //listen for player disconnection and send events to the room
-  socket.on("disconnect", () => {
-    console.log("A player disconnected.");
-  
-    const disconnectedPlayer = removePlayer(socket.id);
-  
-    if (disconnectedPlayer) {
-      const { playerName, room } = disconnectedPlayer;
-      io.in(room).emit(
-        "message",
-        formatMessage("Admin", `${playerName} has left!`)
-      );
-  
-      io.in(room).emit("room", {
-        room,
-        players: getAllPlayers(room),
-      });
-    }
-  });
-
-  //listen for message event by player and update the room chat
-  socket.on("sendMessage", (message, callback) => {
-    const { error, player } = getPlayer(socket.id);
-  
-    if (error) return callback(error.message);
-  
-    if (player) {
-      io.to(player.room).emit(
-        "message",
-        formatMessage(player.playerName, message)
-      );
-      callback(); // invoke the callback to trigger event acknowledgment
-    }
-  });
-
-
-  //listen for get question event from the client
-  socket.on("getQuestion", async (data, callback) => {
-    const { error, player } = getPlayer(socket.id);
-
-    if (error) return callback(error.message);
-
-    if (player) {
-      // Pass in a callback function to handle the promise that's returned from the API call
-      const game = await setGame();
-      //Emit the question event to all players in the room
-      io.to(player.room).emit('question', {
-        playerName: player.playerName,
-        ...game.prompt,
+    //listen for player disconnection and send events to the room
+    socket.on("disconnect", () => {
+      console.log("A player disconnected.");
+    
+      const disconnectedPlayer = removePlayer(socket.id);
+    
+      if (disconnectedPlayer) {
+        const { playerName, room } = disconnectedPlayer;
+        io.in(room).emit(
+          "message",
+          formatMessage("Admin", `${playerName} has left!`)
+        );
+    
+        io.in(room).emit("room", {
+          room,
+          players: getAllPlayers(room),
         });
       }
+    });
+
+    //listen for message event by player and update the room chat
+    socket.on("sendMessage", (message, callback) => {
+      const { error, player } = getPlayer(socket.id);
+    
+      if (error) return callback(error.message);
+    
+      if (player) {
+        io.to(player.room).emit(
+          "message",
+          formatMessage(player.playerName, message)
+        );
+        callback(); // invoke the callback to trigger event acknowledgment
+      }
+    });
+
+
+    //listen for get question event from the client
+    socket.on("getQuestion", async (data, callback) => {
+      const { error, player } = getPlayer(socket.id);
+
+      if (error) return callback(error.message);
+
+      if (player) {
+        // Pass in a callback function to handle the promise that's returned from the API call
+        const game = await setGame();
+        //Emit the question event to all players in the room
+        io.to(player.room).emit('question', {
+          playerName: player.playerName,
+          ...game.prompt,
+          });
+        }
+    });
+
+
+  //event listener that handles player answer submission
+  socket.on("sendAnswer", (answer, callback) => {
+    const { error, player } = getPlayer(socket.id);
+
+    if (error) return callback(error.message);
+
+    if (player) {
+      const { isRoundOver } = setGameStatus({
+        event: "sendAnswer",
+        playerId: player.id,
+        room: player.room,
+      });
+
+      // Since we want to show the player's submission to the rest of the players,
+      // we have to emit an event (`answer`) to all the players in the room along
+      // with the player's answer and `isRoundOver`.
+      io.to(player.room).emit("answer", {
+        ...formatMessage(player.playerName, answer),
+        isRoundOver,
+      });
+
+      callback();
+    }
+  });
+
+  //emitting the answer from the server
+  socket.on("getAnswer", (data, callback) => {
+    const { error, player } = getPlayer(socket.id);
+  
+    if (error) return callback(error.message);
+  
+    if (player) {
+      const { correctAnswer } = getGameStatus({
+        event: "getAnswer",
+      });
+      io.to(player.room).emit(
+        "correctAnswer",
+        formatMessage(player.playerName, correctAnswer)
+      );
+    }
   });
 
 })// end of io.on("connection") block
